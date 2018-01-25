@@ -1,0 +1,4 @@
+ingress:
+  enabled: true
+  ssl: true
+  host: wp.port-azure.demo.kublr.com

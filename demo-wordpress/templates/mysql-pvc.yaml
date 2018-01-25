@@ -1,0 +1,22 @@
+{{- if not .Values.wordpress.database.host }}
+{{- if and .Values.mysql.persistence.enabled ( not .Values.mysql.persistence.preconfiguredPersistentVolumeClaim ) ( not .Values.mysql.persistence.hostPath ) }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: '{{ template "fullname" . }}-mysql'
+  labels:
+    app: '{{ template "fullname" . }}-mysql'
+    chart: '{{ .Chart.Name }}-{{ .Chart.Version }}'
+    release: '{{ .Release.Name }}'
+    heritage: '{{ .Release.Service }}'
+spec:
+{{- if .Values.mysql.persistence.storageClass }}
+  storageClassName: {{ .Values.mysql.persistence.storageClass | quote }}
+{{- end }}
+  accessModes:
+  - {{ .Values.mysql.persistence.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.mysql.persistence.size | quote }}
+{{- end }}
+{{- end }}

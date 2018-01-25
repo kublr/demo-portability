@@ -1,0 +1,74 @@
+{{- if not .Values.wordpress.database.host }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-mysql
+  labels:
+    app: {{ template "fullname" . }}-mysql
+    chart: '{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}'
+    release: '{{ .Release.Name }}'
+    heritage: '{{ .Release.Service }}'
+spec:
+  # replicas and update strategy type are set as follows because we do not support HA (multi-instance) deployment
+  replicas: 1
+  revisionHistoryLimit: {{ .Values.mysql.revisionHistoryLimit }}
+  strategy:
+    # we do not want 2 instances running in parallel during update
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: {{ template "fullname" . }}-mysql
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}-mysql
+        chart: '{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}'
+        release: '{{ .Release.Name }}'
+        heritage: '{{ .Release.Service }}'
+    spec:
+      terminationGracePeriodSeconds: 5
+      containers:
+      - name: main
+        image: {{ .Values.mysql.imageRepo }}:{{ .Values.mysql.imageTag }}
+{{- if .Values.mysql.imagePullPolicy }}
+        imagePullPolicy: {{ .Values.mysql.imagePullPolicy }}
+{{- end }}
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: password
+        resources:
+{{ .Values.resources.mysql | toYaml | indent 10 }}
+        livenessProbe:
+          tcpSocket:
+            port: mysql
+          initialDelaySeconds: 120
+          timeoutSeconds: 5
+        readinessProbe:
+          tcpSocket:
+            port: mysql
+          timeoutSeconds: 5
+        ports:
+        - name: mysql
+          containerPort: 3306
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+          subPath: mysql-data
+      volumes:
+      - name: data
+{{- if not .Values.mysql.persistence.enabled }}
+        emptyDir: {}
+{{- else if .Values.mysql.persistence.hostPath }}
+        hostPath:
+          path: {{ .Values.mysql.persistence.hostPath }}
+          type: DirectoryOrCreate
+{{- else if .Values.mysql.persistence.preconfiguredPersistentVolumeClaim }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.mysql.persistence.preconfiguredPersistentVolumeClaim }}
+{{- else }}
+        persistentVolumeClaim:
+          claimName: {{ template "fullname" . }}-mysql
+{{- end }}
+{{- end }}

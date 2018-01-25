@@ -1,0 +1,19 @@
+{{- if not .Values.wordpress.database.host }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "servicename" . }}-mysql
+  labels:
+    app: {{ template "fullname" . }}-mysql
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  selector:
+    app: {{ template "fullname" . }}-mysql
+  ports:
+  - name: http
+    protocol: TCP
+    port: 3306
+    targetPort: mysql
+{{- end }}

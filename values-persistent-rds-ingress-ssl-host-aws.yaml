@@ -1,0 +1,8 @@
+ingress:
+  enabled: true
+  ssl: true
+  host: wp.port-aws.demo.kublr.com
+  database:
+    host: example-demo-rds.j3478hdsf398.us-east-1.rds.amazonaws.com
+    user: wordpress
+    password: password

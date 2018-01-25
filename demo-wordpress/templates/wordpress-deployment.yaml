@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-wordpress
+  labels:
+    app: {{ template "fullname" . }}-wordpress
+    chart: '{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}'
+    release: '{{ .Release.Name }}'
+    heritage: '{{ .Release.Service }}'
+spec:
+  # replicas and update strategy type are set as follows because we do not support HA (multi-instance) deployment
+  replicas: 1
+  revisionHistoryLimit: {{ .Values.wordpress.revisionHistoryLimit }}
+  strategy:
+    # we do not want 2 instances running in parallel during update
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: {{ template "fullname" . }}-wordpress
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}-wordpress
+        chart: '{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}'
+        release: '{{ .Release.Name }}'
+        heritage: '{{ .Release.Service }}'
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+      - name: main
+        image: {{ .Values.wordpress.imageRepo }}:{{ .Values.wordpress.imageTag }}
+{{- if .Values.wordpress.imagePullPolicy }}
+        imagePullPolicy: {{ .Values.wordpress.imagePullPolicy }}
+{{- end }}
+        env:
+{{- if .Values.wordpress.database.host }}
+        - name: WORDPRESS_DB_HOST
+          value: {{ .Values.wordpress.database.host }}
+{{- else }}
+        - name: WORDPRESS_DB_HOST
+          value: {{ template "servicename" . }}-mysql.{{ .Release.Namespace }}
+{{- end }}
+        - name: WORDPRESS_DB_USER
+          value: {{ .Values.wordpress.database.user | default "root" }}
+        - name: WORDPRESS_DB_PASSWORD
+          value: {{ .Values.wordpress.database.password | default "password" }}
+        resources:
+{{ .Values.resources.wordpress | toYaml | indent 10 }}
+        livenessProbe:
+          tcpSocket:
+            port: http
+          initialDelaySeconds: 120
+          timeoutSeconds: 5
+        readinessProbe:
+          tcpSocket:
+            port: http
+          timeoutSeconds: 5
+        ports:
+        - name: http
+          containerPort: 80
+        - name: https
+          containerPort: 443

@@ -1,0 +1,8 @@
+ingress:
+  enabled: true
+  ssl: true
+  host: wp.port-aws.demo.kublr.com
+
+mysql:
+  persistence:
+    enabled: true

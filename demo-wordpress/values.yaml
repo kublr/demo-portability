@@ -1,0 +1,45 @@
+# Use nameOverride to override chart name in objects' names
+# Default objects' name is {{.Release.Name}}-{{.Chart.Name}}
+nameOverride:
+
+# Use serviceNameOverride to override service name
+# Default service name is {{.Release.Name}}
+serviceNameOverride:
+
+ingress:
+  enabled: false
+  ssl: false
+  host:
+
+wordpress:
+  revisionHistoryLimit: 1
+  imageRepo: wordpress
+  imageTag: 4.9.2-php7.2-apache
+  imagePullPolicy:
+  database:
+    host:
+    user:
+    password:
+
+mysql:
+  revisionHistoryLimit: 1
+  imageRepo: mysql
+  imageTag: 5.7.21
+  imagePullPolicy:
+  persistence:
+    enabled: false
+    hostPath:
+    preconfiguredPersistentVolumeClaim:
+    storageClass: default
+    size: 5Gi
+    accessMode: ReadWriteOnce
+
+resources:
+#  confluence:
+#    requests:
+#      cpu: 50m
+#      memory: 1.5Gi
+#    limits:
+#      memory: 1.5Gi
+  wordpress: {}
+  mysql: {}

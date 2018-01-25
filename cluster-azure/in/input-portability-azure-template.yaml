@@ -1,0 +1,44 @@
+kind: Secret
+metadata:
+  name: azureSecret1
+spec:
+  azureApiAccessKey:
+#    tenantId: '...'
+#    subscriptionId: '...'
+#    aadClientId: '...'
+#    aadClientSecret: '...'
+---
+kind: Cluster
+metadata:
+  name: 'portability-azure'
+spec:
+#  kublrVersion: '1.9.0'
+#  kublrAgentTgzUrl: 'https://nexus.ecp.eastbanctech.com/repository/gobinaries/kublr/1.9.0/kublr-1.9.0-linux.tar.gz'
+#  kublrAgentRepositoryUsername: '...'
+#  kublrAgentRepositoryPassword: '...'
+  locations:
+    - name: azure1
+      azure:
+        region: 'eastus'
+        azureApiAccessSecretRef: 'azureSecret1'
+  secretStore:
+    azureAS:
+      locationRef: azure1
+  master:
+    maxNodes: 1
+    locations:
+      - locationRef: azure1
+        azure:
+#          sshKey: '...'
+          isAvailabilitySet: true
+          instanceType: 'Standard_D3_V2'
+  nodes:
+    - name: default
+      minNodes: 3
+      maxNodes: 3
+      locations:
+        - locationRef: azure1
+          azure:
+#            sshKey: '...'
+            isAvailabilitySet: true
+            instanceType: 'Standard_D3_V2'
