@@ -17,3 +17,7 @@ We truncate at 24 chars because some Kubernetes name fields are limited to this 
 {{- define "servicename" -}}
 {{- .Values.serviceNameOverride | default .Release.Name -}}
 {{- end -}}
+
+{{- define "k8sVersion" -}}
+{{- printf "%s.%s" .Capabilities.KubeVersion.Major .Capabilities.KubeVersion.Minor -}}
+{{- end -}}

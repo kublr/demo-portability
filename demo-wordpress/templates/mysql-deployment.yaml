@@ -1,5 +1,5 @@
 {{- if not .Values.wordpress.database.host }}
-apiVersion: apps/v1
+apiVersion: {{ if semverCompare ">=1.9" ( include "k8sVersion" . ) }}apps/v1{{ else }}extensions/v1beta1{{ end }}
 kind: Deployment
 metadata:
   name: {{ template "fullname" . }}-mysql
