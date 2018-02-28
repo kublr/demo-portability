@@ -17,7 +17,36 @@ If tools other than Kublr are used to setup the clusters, the clusters
 must satisfy requirements summarized in the section **1.2. Non-Kublr
 created clusters**
 
-### 1.2. Non-Kublr created clusters
+### 1.3. Setting up clusters with Kublr
+
+Before you get stated install Kublr-in-a-Box using instructions provided
+in Kublr-in-a-Box Installation Guide: https://docs.kublr.com/installationguide/bootstrap/
+
+1.  Set up two clusters, one in AWS and one in Azure, using the following guidelines:
+
+    1.  Find more information on how to setup clusters in Kublr using Kublr Quick Start Guide:
+
+        a.  AWS: https://docs.kublr.com/installationguide/production-control-plane/
+
+        b.  Azure: https://docs.kublr.com/installationguide/production-control-plane-azure/
+
+    2.  Each cluster includes 1 master and 3 worker nodes:
+
+        a.  AWS: t2.medium instance type for both: masters and work nodes
+
+        b.  Azure: Standard_D3_v2 instance type for both: masters and work nodes.
+
+    3.  For both clusters turn on Ingress and configure Let's Encrypt
+
+2.  Wait until clusters are in Running state.
+
+3.  Setup domains for these two clusters by pointing wildcard DNS records
+    to Load Balancers of the newly created clusters.
+
+    More details can be found at [How to Configure DNS for a Cluster with Ingress
+    Controller](https://docs.kublr.com/dns-setup/)
+
+### 1.3. Non-Kublr created clusters
 
 Two clusters are to be setup, one in AWS and the other in Azure.
 
@@ -57,190 +86,56 @@ Two clusters are to be setup, one in AWS and the other in Azure.
     to be made in the demo scenario and some value files:
     `values-*-host*.yaml`
 
-    See section **1.4. Variations** for more details.
+    See section **1.5. Variations** for more details.
 
-### 1.3. Setting up demo environment with Kublr
+### 1.4. Prepare client environment
 
-#### 1.3.1. Configure access credentials
+1.  Prepare Kubernetes config file to access the clusters
 
-If Kublr is used to setup the cluster, it is expected that the user has
-access to Kublr private docker and Helm repositories.
+    1.  Download Kubernetes config files for your clusters into files
+        `cluster-aws/out/config-portability-aws.yaml` and
+        `cluster-azure/out/config-portability-azure.yaml`.
 
-To make sure that set access up
+    2.  Merge files `cluster-aws/out/config-portability-aws.yaml` and
+        `cluster-azure/out/config-portability-azure.yaml` into a single
+        kubernetes config file `clusters/config-portability.yaml` by
+        copying contents of sections `clusters`, `users` and `contexts`.
 
-1.  Ensure that you are logged in to Kublr docker repository at
-    `docker.ecp.eastbanctech.com`
+    3.  Make sure that contexts in the file are renamed to `aws` and `azure`
+        for AWS and Azure clusters correspondingly, and `currentContext`
+        property is not defined.
 
-    ```
-    docker login docker.ecp.eastbanctech.com
-    ```
+2.  Install the config file, `kubectl`, and `helm` commands as described in
+    Kublr Quick Start Guide referenced above or in Kubernetes and Helm
+    documentation respectively.
 
-2.  Ensure that environment variables to access Kublr helm repository at
-    `nexus.ecp.eastbanctech.com` are setup correctly.
-
-    ```
-    export HELM_REPO_USERNAME=...
-    export HELM_REPO_PASSWORD=...
-    ```
-
-3.  An environment variable with Kublr version is set.
+    All commands in this file assume that `KUBECONFIG` environment variable
+    is set and exported as follows:
 
     ```
-    export KUBLR_VERSION=...
+    export KUBECONFIG="$(pwd)/clusters/config-portability.yaml"
     ```
 
-4.  Copy `cluster-aws/in/input-portability-aws-template.yaml` into
-    `cluster-aws/in/input-portability-aws.yaml` and
-    `cluster-azure/in/input-portability-azure-template.yaml` into
-    `cluster-azure/in/input-portability-azure.yaml`.
-
-    In the copied files `cluster-aws/in/input-portability-aws.yaml` and
-    `cluster-azure/in/input-portability-azure.yaml` uncomment the
-    commented lines and provide correct values according to Kublr
-    documentation and desired configuration.
-
-#### 1.3.1. Generate cluster artifacts
-
-1.  For AWS cluster:
+    Test `kubectl` and `helm` commands:
 
     ```
-    mkdir -p "$(pwd)/cluster-aws/out"
-    docker run \
-        -u "$(id -u):$(id -g)" \
-        -v "$(pwd)/cluster-aws/in:/gen" \
-        -v "$(pwd)/cluster-aws/out:/gen-out" \
-        -v "${HOME}/.aws:/.aws" \
-        -e HOME=/ \
-        docker.ecp.eastbanctech.com/kublr/gen:${KUBLR_VERSION} \
-            -f /gen/input-portability-aws.yaml \
-            -o /gen-out
+    kubectl --context=aws get nodes
+    kubectl --context=azure get nodes
+    helm --kube-context=aws list
+    helm --kube-context=azure list
     ```
 
-2.  For Azure cluster:
+3.  Verify that cluster' load balancers are available:
 
-    ```
-    mkdir -p "$(pwd)/cluster-azure/out"
-    docker run \
-        -u "$(id -u):$(id -g)" \
-        -v "$(pwd)/cluster-azure/in:/gen" \
-        -v "$(pwd)/cluster-azure/out:/gen-out" \
-        -e HOME=/ \
-        docker.ecp.eastbanctech.com/kublr/gen:${KUBLR_VERSION} \
-            -f /gen/input-portability-azure.yaml \
-            -o /gen-out
-    ```
+    Test AWS load balancer: `http://<aws-elb-specific-address>.elb.amazonaws.com`
+    (this address will be unique for your specific cluster).
 
-#### 1.3.2. Create clusters
+    Test Azure load balancer: `http://<azure-lb-specific-ip>` (this address will be
+    unique for your specific cluster).
 
-1. AWS:
+    Both should open default 404 page.
 
-    ```
-    ( cd cluster-aws/out; bash aws-portability-aws-aws1.sh )
-    ```
-
-    Cluster config will be automatically downloaded by the script:
-    `cluster-aws/out/config-portability-aws.yaml`
-
-2.  Azure:
-
-    ```
-    ( cd cluster-azure/out; bash azure-portability-azure-azure1-deploy.sh )
-    ```
-
-    Download cluster config from Azure deployment:
-    `cluster-azure/out/config-portability-azure.yaml`
-
-#### 1.3.3. Deploy features
-
-1.  AWS
-
-    -   kublr-system
-
-        ```
-        KUBECONFIG=cluster-aws/out/config-portability-aws.yaml \
-        helm upgrade -i \
-            --namespace kube-system \
-            kublr-system \
-            https://${HELM_REPO_USERNAME}:${HELM_REPO_PASSWORD}@nexus.ecp.eastbanctech.com/repository/helm/kublr-system-0.2.3.tgz \
-            -f cluster-aws/out/kublr-system-values.yaml
-        ```
-
-    -   kublr-feature-ingress
-
-    ```
-    KUBECONFIG=cluster-aws/out/config-portability-aws.yaml \
-    helm upgrade -i \
-        --namespace kube-system \
-        kublr-feature-ingress \
-        https://${HELM_REPO_USERNAME}:${HELM_REPO_PASSWORD}@nexus.ecp.eastbanctech.com/repository/helm/kublr-feature-ingress-0.3.1.tgz \
-        -f clusters/kublr-feature-ingress-values.yaml
-    ```
-
-    Point `*.port-aws.demo.kublr.com` at the ELB created for the ingress
-    controller.
-
-2.  Azure
-
-    -   kublr-system
-
-        ```
-        KUBECONFIG=cluster-azure/out/config-portability-azure.yaml \
-        helm upgrade -i \
-            --namespace kube-system \
-            kublr-system \
-            https://${HELM_REPO_USERNAME}:${HELM_REPO_PASSWORD}@nexus.ecp.eastbanctech.com/repository/helm/kublr-system-0.2.3.tgz \
-            -f clusters/kublr-system-values.yaml
-        ```
-
-    -   kublr-feature-ingress
-
-        ```
-        KUBECONFIG=cluster-azure/out/config-portability-azure.yaml \
-        helm upgrade -i \
-            --namespace kube-system \
-            kublr-feature-ingress \
-            https://${HELM_REPO_USERNAME}:${HELM_REPO_PASSWORD}@nexus.ecp.eastbanctech.com/repository/helm/kublr-feature-ingress-0.3.1.tgz \
-            -f kublr-feature-ingress-values.yaml
-        ```
-
-        Point `*.port-azure.demo.kublr.com` at the IP of the load balancer
-        created for the ingress controller.
-
-#### 1.3.4. Other
-
-Merge files `cluster-aws/out/config-portability-aws.yaml` and
-`cluster-azure/out/config-portability-azure.yaml` into a single
-kubernetes config file `clusters/config-portability.yaml`
-
-Make sure that contexts in the file are renamed to `aws` and `azure` for
-AWS and Azure clusters correspondingly, and current context is not
-defined.
-
-All commands in this file assume that `KUBECONFIG` environment variable
-is set and exported as follows:
-
-```
-export KUBECONFIG="$(pwd)/clusters/config-portability.yaml"
-```
-
-Test `kubectl` and `helm` commands:
-
-```
-kubectl --context=aws get nodes
-kubectl --context=azure get nodes
-helm --kube-context=aws list
-helm --kube-context=azure list
-```
-
-Test AWS load balancer: `http://<aws-elb-specific-address>.elb.amazonaws.com`
-(this address will be unique for your specific cluster).
-
-Test Azure load balancer: `http://<azure-lb-specific-ip>` (this address will be
-unique for your specific cluster).
-
-Both should open default 404 page.
-
-### 1.4. Variations
+### 1.5. Environmental Variations
 
 When setting up a specific environment, some of the parameters may or
 will vary:
@@ -347,7 +242,8 @@ files to corresponding `...-azure.yaml` files.
 ### 2.3. Self-hosted persistence
 
 To deploy Azure with Ceph persistence you need to first make sure that
-Ceph cluster and `replicapool` replica pool in that cluster
+Ceph cluster is deployed and `replicapool` replica pool is created in
+that cluster.
 
 #### 2.3.1. Deploy Rook operator for Ceph cluster
 
