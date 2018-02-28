@@ -330,6 +330,17 @@ files to corresponding `...-azure.yaml` files.
     helm --kube-context=aws upgrade -i demo demo-wordpress -f values-persistent-ingress-ssl-host-aws.yaml
     ```
 
+    After this wordpress will stop working, because mysql will have been
+    restarted with new storage and Wordpress-initialized database will
+    have been lost because of that.
+
+    To fix this just restart wordpress pod so that wordpress can re-initialize
+    its database on the new storage.
+
+    ```
+    kubectl --context aws delete pods -l app=demo-demo-wordpress-wordpress --now
+    ```
+
     After application is initialized and started, it should be able to
     survive both wordpress and mysql pod restart.
 
