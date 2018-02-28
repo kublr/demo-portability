@@ -354,33 +354,60 @@ Ceph cluster and `replicapool` replica pool in that cluster
 Make sure node labels are correct
 
 ```
-for n in $(kubectl --context=azure get nodes -o=custom-columns=NAME:.metadata.name --no-headers); do echo -n "$n: "; kubectl --context=azure label --overwrite node "$n" "kubernetes.io/hostname=$n"; done
+for n in $(kubectl --context=azure get nodes -o=custom-columns=NAME:.metadata.name --no-headers); do
+    echo -n "$n: "; kubectl --context=azure label --overwrite node "$n" "kubernetes.io/hostname=$n"
+done
 ```
 
 Deploy operator
 
 ```
 kubectl --context=azure apply -f rook/rook-operator.yaml
+```
 
-# Check that it is deployed (1 operator, 1 agent per node should be available)
+It is not instantaneous, so you need to wait until operator is completely
+started and available. For that check operator's pod using the following
+command until you see that 1 agent pod for each node in the cluster and
+1 operator pod in `Running` state:
+
+```
+# Check that it is deployed (1 operator, 1 agent per node should be running)
 kubectl --context=azure get -n rook-system pods
 ```
 
-Deploy cluster and tools
+Check and wait until you see all the required pods running.
+
+Next deploy a Rook cluster and tools
 
 ```
-# cluster
+# Rook cluster
 kubectl --context=azure apply -f rook/rook-cluster.yaml
+```
 
-# check deployed (1 api, 1 mgr, 3 mon, 1 osd per node)
+Make sure that all cluster components are running - you should be able to
+see 1 api pod, 1 manager pod, 3 monitor pods, and 1 osd pod for each node
+of the cluster (3 in our case):
+
+```
+# check the Rook cluster is deployed (1 api, 1 mgr, 3 mon, 1 osd per node)
 kubectl --context=azure get -n rook pods
+```
 
+Check and wait until you see all the required pods running.
+
+After cluster is started you can deploy a pod with Rook tools and check
+Rook cluster status using them:
+
+```
 # tools
 kubectl --context=azure apply -f rook/rook-tools.yaml
 
 # test cluster and tools
 kubectl --context=azure exec -n rook rook-tools -- rookctl status
 ```
+
+You should see a detailed output describing Rook/Ceph cluster status, which
+is expected to be all OK.
 
 Prepare Ceph replica pool and storage class
 
